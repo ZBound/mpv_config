@@ -1,7 +1,7 @@
-## 阅前提醒：此方案可向服务器回传进度，且不需要服务端支持，但播放时需要后台常驻运行一个 Python 脚本，且只有 Windows 系统可正常调用快捷脚本，其他平台请去原项目查看教程。
+## 阅前提醒：此方案可向服务器回传进度，且不需要服务端支持，但播放时需要后台常驻运行一个 Python 脚本，且只有 Windows 系统可正常调用快捷脚本，其他平台请去 [原项目](https://github.com/kjtsune/embyToLocalPlayer) 查看教程。
 
 
-(1) 如果你的系统中环境变量有 Python 包或使用 MPV_lazy，请直接跳到第②步
+(1) 如果你的系统中环境变量有 Python 包或使用 [MPV_lazy](https://github.com/hooke007/MPV_lazy)，请直接跳到第②步
 
     PS: MPV_lazy 观看 emby 闪退的话向 mpv.conf 中添加 msg-level=all=info 便可以解决
 
