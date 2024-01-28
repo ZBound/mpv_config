@@ -3,7 +3,7 @@
 
 (1) 如果你的系统中环境变量有 Python 包或使用 [MPV_lazy](https://github.com/hooke007/MPV_lazy)，请直接跳到第②步
 
-    PS: MPV_lazy 观看 emby 闪退的话向 mpv.conf 中添加 msg-level=all=info 便可以解决
+    PS: MPV_lazy 观看 emby 闪退的话,请向 mpv.conf 中添加 msg-level=all=info 便可以解决
 
 如果没有 [在此下载](https://www.python.org/downloads/windows/) 选择64位便携包，虽然对版本要求不高，但最好按照图中版本下载。
 
