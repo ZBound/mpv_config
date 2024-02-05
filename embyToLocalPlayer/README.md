@@ -1,3 +1,18 @@
+## 修改自 [embyToLocalPlayer](https://github.com/kjtsune/embyToLocalPlayer)
+
+修改内容:
+
+1.将快速使用脚本(debug)汉化
+
+2.添加自动写入mpv路径功能
+
+3.添加可以调用上级目录的便携py包功能
+
+4.将播放列表中url转换为文字标题，mpv.net不支持(Quz,Valentina)
+
+5.预设部分 version_filter 参数(7nichi,Quz)
+
+
 ## 阅前提醒：此方案可向服务器回传进度，且不需要服务端支持，但播放时需要后台常驻运行一个 Python 脚本，且只有 Windows 系统可正常调用快捷脚本，其他平台请去 [原项目](https://github.com/kjtsune/embyToLocalPlayer) 查看教程。
 
 
