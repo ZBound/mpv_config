@@ -1,7 +1,9 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-:: ¶¨Î»µ½½Å±¾ËùÔÚÄ¿Â¼µÄ¸¸Ä¿Â¼
+chcp 65001
+
+:: å®šä½åˆ°è„šæœ¬æ‰€åœ¨ç›®å½•çš„çˆ¶ç›®å½•
 set "BATCH_PATH=%~dp0"
 cd /d "%BATCH_PATH%.."
 
@@ -10,13 +12,14 @@ set "tempFile=%BATCH_PATH%temp.ini"
 set /a "maxLines=25"
 set /a "lineCount=0"
 
-:: ½« UTF-8 ±àÂëµÄÅäÖÃÎÄ¼ş×ª»»Îª GB18030 ±àÂë
-PowerShell -Command "Get-Content '%configFile%' -Encoding UTF8 | Out-File -FilePath '%tempFile%' -Encoding Default"
+:: å°† UTF-8 ç¼–ç çš„é…ç½®æ–‡ä»¶è½¬æ¢ä¸º GB18030 ç¼–ç 
+:: PowerShell -Command "Get-Content '%configFile%' -Encoding UTF8 | Out-File -FilePath '%tempFile%' -Encoding Default"
+PowerShell -Command "Get-Content '%configFile%' -Encoding UTF8 | Out-File -FilePath '%tempFile%' -Encoding UTF8"
 
-:: ÓÃ×ª»»ºóµÄÁÙÊ±ÎÄ¼şÌæ»»Ô­Ê¼ÅäÖÃÎÄ¼şÂ·¾¶
+:: ç”¨è½¬æ¢åçš„ä¸´æ—¶æ–‡ä»¶æ›¿æ¢åŸå§‹é…ç½®æ–‡ä»¶è·¯å¾„
 move /y "%tempFile%" "%configFile%"
 
-:: ¼ì²é¸¸Ä¿Â¼ÖĞÊÇ·ñ´æÔÚ mpvnet.exe »ò mpv.exe
+:: æ£€æŸ¥çˆ¶ç›®å½•ä¸­æ˜¯å¦å­˜åœ¨ mpvnet.exe æˆ– mpv.exe
 if exist "mpvnet.exe" (
     set "keyToFindMpve=mpve ="
     set "newValueMpve= %CD%\mpvnet.exe"
@@ -28,31 +31,31 @@ if exist "mpvnet.exe" (
     set "keyToFindPlayer=player ="
     set "newValuePlayer= mpv"
 ) else (
-    echo ´íÎó: Î´ÕÒµ½ mpvnet.exe »ò mpv.exe¡£
+    echo é”™è¯¯: æœªæ‰¾åˆ° mpvnet.exe æˆ– mpv.exeã€‚
     pause
     goto EndScript
 )
 
-:: ¼ì²éÅäÖÃÎÄ¼şÊÇ·ñ´æÔÚ
+:: æ£€æŸ¥é…ç½®æ–‡ä»¶æ˜¯å¦å­˜åœ¨
 if not exist "%configFile%" (
-    echo ´íÎó: ÅäÖÃÎÄ¼ş "%configFile%" Î´ÕÒµ½¡£
+    echo é”™è¯¯: é…ç½®æ–‡ä»¶ "%configFile%" æœªæ‰¾åˆ°ã€‚
     goto EndScript
 )
 
-:: ´´½¨ĞÂµÄÁÙÊ±ÎÄ¼ş
+:: åˆ›å»ºæ–°çš„ä¸´æ—¶æ–‡ä»¶
 >"%tempFile%" (
     for /f "delims=" %%a in ('type "%configFile%"') do (
         set "line=%%a"
         set /a "lineCount+=1"
         
-        :: Ö»´¦ÀíÇ°25ĞĞ
+        :: åªå¤„ç†å‰25è¡Œ
         if !lineCount! leq !maxLines! (
-            :: ¼ì²éĞĞÊÇ·ñ°üº¬ keyToFindMpve
+            :: æ£€æŸ¥è¡Œæ˜¯å¦åŒ…å« keyToFindMpve
             echo !line! | findstr /b /c:"!keyToFindMpve!" >nul
             if !errorlevel! equ 0 (
                 echo !keyToFindMpve!!newValueMpve!
             ) else (
-                :: Èç¹û²»ÊÇ mpve£¬Ôò¼ì²éÊÇ·ñÊÇ player
+                :: å¦‚æœä¸æ˜¯ mpveï¼Œåˆ™æ£€æŸ¥æ˜¯å¦æ˜¯ player
                 echo !line! | findstr /b /c:"!keyToFindPlayer!" >nul
                 if !errorlevel! equ 0 (
                     echo !keyToFindPlayer!!newValuePlayer!
@@ -66,19 +69,20 @@ if not exist "%configFile%" (
     )
 )
 
-:: É¾³ıÔ­Ê¼ÅäÖÃÎÄ¼ş
+:: åˆ é™¤åŸå§‹é…ç½®æ–‡ä»¶
 del "%configFile%"
 if not exist "%configFile%" (
-    echo mpvÂ·¾¶Ğ´Èë³É¹¦¡£
+    echo mpvè·¯å¾„å†™å…¥æˆåŠŸã€‚
 ) else (
-    echo ´íÎó: Ğ´ÈëmpvÂ·¾¶Ê§°Ü¡£
+    echo é”™è¯¯: å†™å…¥mpvè·¯å¾„å¤±è´¥ã€‚
     goto EndScript
 )
 
-:: ½« GB18030 ±àÂëµÄÁÙÊ±ÎÄ¼ş×ª»»»Ø UTF-8 ±àÂë
-PowerShell -Command "Get-Content '%tempFile%' -Encoding Default | Out-File -FilePath '%configFile%' -Encoding UTF8"
+:: å°† GB18030 ç¼–ç çš„ä¸´æ—¶æ–‡ä»¶è½¬æ¢å› UTF-8 ç¼–ç 
+:: PowerShell -Command "Get-Content '%tempFile%' -Encoding Default | Out-File -FilePath '%configFile%' -Encoding UTF8"
+PowerShell -Command "Get-Content '%tempFile%' -Encoding UTF8 | Out-File -FilePath '%configFile%' -Encoding UTF8"
 
-:: É¾³ıÁÙÊ±ÎÄ¼ş
+:: åˆ é™¤ä¸´æ—¶æ–‡ä»¶
 del "%tempFile%"
 
 :EndScript

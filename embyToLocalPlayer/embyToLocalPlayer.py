@@ -86,8 +86,14 @@ def start_play(data):
     sub_file = data['sub_file']
     media_title = data['media_title']
     mount_disk_mode = data['mount_disk_mode']
-    eps_data_thread = ThreadWithReturnValue(target=list_episodes, args=(data,))
-    eps_data_thread.start()
+    # eps_data_thread = ThreadWithReturnValue(target=list_episodes, args=(data,))
+    # eps_data_thread.start()
+
+    # list_episodes运行完后，可以保证data和eps_data中的所有media_title结果都完成规格化
+    # 此后再将新的media_title传递给player_manager
+    # 否则，player_manager.start_player启动第一个视频时未规格化的media_title与随后list_episodes规格化的media_title不一致，导致第一个视频回传进度时找不到对应项
+    eps_data = list_episodes(data)
+    media_title = data['media_title']
 
     cmd = get_player_cmd(media_path=data['media_path'], file_path=file_path)
     player_path = cmd[0]
@@ -103,8 +109,11 @@ def start_play(data):
             player_manager = PlayerManager(data=data, player_name=player_name, player_path=player_path)
             player_manager.start_player(cmd=cmd, start_sec=start_sec, sub_file=sub_file, media_title=media_title,
                                         mount_disk_mode=mount_disk_mode, data=data)
-            eps_data = eps_data_thread.join()
+            # eps_data = eps_data_thread.join()
             player_manager.playlist_add(eps_data=eps_data)
+
+            logger.info('player started.')
+
             player_manager.update_playlist_time_loop()
             player_manager.update_playback_for_eps()
             player_is_running = False
@@ -120,7 +129,7 @@ def start_play(data):
             return
         update_server_playback_progress(stop_sec=stop_sec, data=data)
 
-        eps_data = eps_data_thread.join()
+        # eps_data = eps_data_thread.join()
         current_ep = [i for i in eps_data if i['file_path'] == data['file_path']][0]
         current_ep['_stop_sec'] = stop_sec
         for provider in 'trakt', 'bangumi':

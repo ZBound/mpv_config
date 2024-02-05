@@ -161,7 +161,7 @@ class PlayerManager:
                 continue
             if not _stop_sec:
                 continue
-            logger.info(f'update progress: {ep["basename"]} {_stop_sec=}')
+            logger.info(f'updating progress: {ep["basename"]} {_stop_sec=}')
             update_server_playback_progress(stop_sec=_stop_sec, data=ep)
 
             ep['_stop_sec'] = _stop_sec
@@ -170,19 +170,35 @@ class PlayerManager:
             if configs.raw.get(provider, 'enable_host', fallback=''):
                 threading.Thread(target=sync_third_party_for_eps,
                                  kwargs={'eps': need_update_eps, 'provider': provider}, daemon=True).start()
+        logger.info('update progress done.')
 
-
-def init_player_instance(function, **kwargs):
+# def init_player_instance(function, **kwargs):
+def init_player_instance(function, pid=None, **kwargs):
     init_times = 1
     player = None
-    while init_times <= 5:
+    # while init_times <= 5:
+    while init_times <= 20:
         try:
-            time.sleep(1)
+            # time.sleep(1)
+            time.sleep(2)
+            logger.info(f'<init_player_instance>: attempting pipe {kwargs["ipc_socket"]}')
             player = function(**kwargs)
             break
         except Exception as e:
             logger.error(f'{str(e)[:40]} init_player: {init_times=}')
             init_times += 1
+
+        # 适配mpv-config的SMTC媒体控制功能
+        if kwargs.get('ipc_socket') and pid:
+            try:
+                kwargs_ = kwargs.copy()
+                kwargs_['ipc_socket'] = 'embyToLocalPlayer_pipe_name_' + str(pid)
+                logger.info(f'<init_player_instance>: attempting pipe {kwargs_["ipc_socket"]}')
+                player = function(**kwargs_)
+                break
+            except Exception as e:
+                logger.error(f'{str(e)[:40]} init_player: {init_times=}')
+                init_times += 1
     return player
 
 
@@ -209,6 +225,7 @@ def mpv_player_start(cmd, start_sec=None, sub_file=None, media_title=None, get_s
     if not mount_disk_mode:
         if proxy := configs.player_proxy:
             cmd.append(f'--http-proxy=http://{proxy}')
+            cmd.append('--cache=no')
     if start_sec is not None:
         if is_iina and mount_disk_mode:
             # iina 读盘模式下 start_sec 会影响下一集
@@ -224,12 +241,13 @@ def mpv_player_start(cmd, start_sec=None, sub_file=None, media_title=None, get_s
     if configs.disable_audio:
         cmd.append('--no-audio')
         # cmd.append('--no-video')
+    cmd.append(f'--pause')
     cmd = ['--mpv-' + i.replace('--', '', 1) if is_darwin and is_iina and i.startswith('--') else i for i in cmd]
     logger.info(cmd)
     player = subprocess.Popen(cmd, env=os.environ)
     activate_window_by_pid(player.pid)
 
-    mpv = init_player_instance(MPV, start_mpv=False, ipc_socket=pipe_name)
+    mpv = init_player_instance(MPV, pid=player.pid, start_mpv=False, ipc_socket=pipe_name)
     if sub_file and is_mpvnet and mpv:
         _cmd = ['sub-add', sub_file]
         mpv.command(*_cmd)
@@ -253,6 +271,23 @@ def playlist_add_mpv(mpv: MPV, data, eps_data=None, limit=10):
         return {}
     episodes = eps_data or list_episodes(data)
     append = False
+
+    # 本函数向mpv发送的loadfile命令已经包含了"title","force-media-title","osd-playing-msg"参数
+    # 因此我们期望osd能读取到这些参数修改的属性，使osd显示的playlist显示美观的title，而不是url
+    # 然而，由于loadfile命令只有等到文件播放时才会开始应用这些参数（见https://mpv.io/manual/stable/#command-interface-[%3Coptions%3E]]），
+    # 因此播放前title属性不存在，这导致osd无法显示title信息，只能显示丑陋的url
+    # 因此我们使用以下hack方式强迫mpv应用title参数：
+    #   关闭缓冲（mpv_player_start执行），关闭网络，每loadfile一个文件就播放（以应用属性），全部loadfile后跳回第一个文件，打开缓冲和网络并开始播放
+
+    mpv.command('set', 'pause', 'yes')
+    remember_playlist_pos = None    # 记忆第一个loadfile的文件位置
+
+    # 设置代理为“黑洞地址”以暂时禁用网络活动，加载完播放列表后再启用
+    # 见https://superuser.com/questions/698244/ip-address-that-is-the-equivalent-of-dev-null
+    # 在连接上IPC套接字后才可以切换代理，否则脚本无法与mpv连接
+    remember_httpproxy = mpv.command('expand-text', '${http-proxy}')
+    mpv.command('set', 'http-proxy', 'http://[100::]:1')
+
     for ep in episodes:
         basename = ep['basename']
         media_title = ep['media_title']
@@ -300,14 +335,42 @@ title=main
         else:
             chap_cmd = ''
 
+#
+        logger.info(f'<playlist_add_mpv>: loadfile {ep["media_path"]} append'
+                    '\n'
+                    f'title="{media_title}",force-media-title="{media_title}",osd-playing-msg="{media_title}"'
+                    f',start=0{sub_cmd}{chap_cmd}')
+#
         try:
             mpv.command(
                 'loadfile', ep['media_path'], 'append',
                 f'title="{media_title}",force-media-title="{media_title}",osd-playing-msg="{media_title}"'
                 f',start=0{sub_cmd}{chap_cmd}')
+
+            if not remember_playlist_pos:
+                remember_playlist_pos = mpv.command('expand-text', '${playlist-pos}')
+            mpv.command('playlist-next')
+            while True:
+                try:
+                    # 有些插件/profile会修改title一类的属性，导致与此脚本冲突，需要根据情况调整此处查询的属性
+                    if mpv.command('expand-text', '${force-media-title}') == media_title:
+                        break
+                except:
+                    pass
+
+            # 由于playlist属性只读，直接修改属性的方法不可行，见https://github.com/mpv-player/mpv/issues/9288#issuecomment-1530437813
+            # playlist_cnt = int(mpv.command('expand-text', '${playlist-count}'))
+            # mpv.command('set', f'playlist/${playlist_cnt-1}/title', f'"${media_title}"')
+
         except OSError:
             logger.error('mpv exit: by playlist_add_mpv: except OSError')
             return {}
+
+    # 恢复播放位置、缓冲和网络，开始播放
+    remember_playlist_pos and mpv.command('set', 'playlist-pos', remember_playlist_pos)
+    mpv.command('set', 'cache', 'yes')
+    mpv.command('set', 'http-proxy', remember_httpproxy if remember_httpproxy else '')
+    mpv.command('set', 'pause', 'no')
     return playlist_data
 
 

@@ -320,6 +320,10 @@ def list_episodes(data: dict):
         ver_re = configs.raw.get('playlist', 'version_filter', fallback='').strip().strip('|')
         if not ver_re:
             return episodes_data
+
+        ver_re = ''.join(ver_re.split())
+        logger.info(f'[playlist] version_filter = "{ver_re}"')
+
         try:
             ep_seq_cur_list = list(
                 dict.fromkeys([f"{i['ParentIndexNumber']}-{i['IndexNumber']}" for i in episodes_data]))
@@ -386,6 +390,10 @@ def list_episodes(data: dict):
             _key = f"{ep['ParentIndexNumber']}-{ep['IndexNumber']}"
             _title_map[_key] = _t
 
+            # 有时不存在章节信息
+            if not ep.get('Chapters'):
+                continue
+
             chapters = [i for i in ep['Chapters'][:5] if i.get('MarkerType')
                         and not str(i['StartPositionTicks']).endswith('000000000')
                         and not (i['StartPositionTicks'] == 0 and i['MarkerType'] == 'Chapter')]
@@ -400,6 +408,7 @@ def list_episodes(data: dict):
         return _res
 
     title_data, start_data, end_data = title_intro_index_map()
+    logger.info(f'<title_intro_index_map>: {title_data}')   # 有时episodes_info有可能为空，此时title_data也为空，因此会导致下方parse_item函数将media_title设置为仅basename
 
     def parse_item(item):
         source_info = item['MediaSources'][0]
