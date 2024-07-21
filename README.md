@@ -1,6 +1,8 @@
 # mpv_config
 基于 [mpv-config](https://github.com/dyphire/mpv-config/) ，精简修改添加部分组件，适配个人习惯
 
+覆盖更新一般没什么问题，但会覆盖你自己自定义的配置
+
 ## 感谢
 感谢 [mpv-player](https://github.com/mpv-player) 项目以及所有开发者们
 
