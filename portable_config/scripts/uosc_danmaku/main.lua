@@ -190,6 +190,7 @@ end)
 -- Register script message to show the input menu
 mp.register_script_message("load-danmaku", function(episodeId)
     set_episode_id(episodeId, true)
+	mp.command("no-osd vf add @60fps:fps=fps=60/1.000")
 end)
 
 mp.register_script_message("open_add_source_menu", open_add_menu)
@@ -206,12 +207,15 @@ mp.register_script_message("set", function(prop, value)
 
     if value == "on" then
         show_danmaku_func()
+        mp.command("no-osd vf add @60fps:fps=fps=60/1.000")  -- 添加60fps滤镜且不显示OSD消息
     else
         hide_danmaku_func()
+        mp.command("no-osd vf remove @60fps")  -- 删除之前设置的60fps滤镜且不显示OSD消息
     end
 
     mp.commandv("script-message-to", "uosc", "set", "show_danmaku", value)
 end)
+-- 当调用 'show_danmaku' 功能时，根据弹幕显示状态调整视频帧率
 mp.register_script_message("show_danmaku_keyboard", function()
     local has_danmaku = false
     local sec_sid = mp.get_property("secondary-sid")
@@ -223,17 +227,23 @@ mp.register_script_message("show_danmaku_keyboard", function()
         end
     end
 
-    if sec_sid == "no" and has_danmaku == false then
+    if sec_sid == "no" and not has_danmaku then
         return
     end
 
     if sec_sid ~= "no" then
+        -- 隐藏弹幕并移除60fps设置
         hide_danmaku_func()
-        mp.commandv("script-message-to", "uosc", "set", "show_danmaku", "off")
-		mp.osd_message("弹幕: 关闭")
+        mp.command("no-osd vf remove @60fps")  -- 删除之前设置的60fps滤镜
+        mp.commandv("script-message-to", "uosc", "set", "show_danmaku", "off")	
+        mp.osd_message("弹幕: 关闭")
     else
+        -- 显示弹幕并应用60fps设置
         show_danmaku_func()
+        mp.command("no-osd vf add @60fps:fps=fps=60/1.000")  -- 添加60fps滤镜
         mp.commandv("script-message-to", "uosc", "set", "show_danmaku", "on")
-		mp.osd_message("弹幕: 开启")
+        mp.osd_message("弹幕: 开启")
     end
 end)
+
+
