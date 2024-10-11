@@ -1,5 +1,7 @@
 --[[ Stateless utilities missing in lua standard library ]]
 
+---@alias Shortcut {id: string; key: string; modifiers?: string; alt: boolean; ctrl: boolean; shift: boolean}
+
 ---@param number number
 function round(number) return math.floor(number + 0.5) end
 
@@ -17,9 +19,14 @@ function serialize_rgba(rgba)
 	}
 end
 
--- Escape special characters in url.
+-- Trim any white space from the start and end of the string.
 ---@param str string
 ---@return string
+function trim(str) return str:match('^%s*(.-)%s*$') end
+
+-- Escape special characters in url.
+---@param str string
+---@return string|nil
 function url_decode(str)
 	local function hex_to_char(x)
 		return string.char(tonumber(x, 16))
@@ -30,10 +37,8 @@ function url_decode(str)
 		if str:find('://localhost:?') then
 			str = str:gsub('^.*/', '')
 		end
-		return str
-	else
-		return
 	end
+	return str
 end
 
 -- Trim any `char` from the end of the string.
@@ -95,12 +100,18 @@ function string_last_index_of(str, sub)
 	end
 end
 
+-- Escapes a string to be used in a matching expression.
+---@param value string
+function regexp_escape(value)
+	return string.gsub(value, '[%(%)%.%+%-%*%?%[%]%^%$%%]', '%%%1')
+end
+
 ---@param itable table
 ---@param value any
 ---@return integer|nil
 function itable_index_of(itable, value)
-	for index, item in ipairs(itable) do
-		if item == value then return index end
+	for index = 1, #itable do
+		if itable[index] == value then return index end
 	end
 end
 
@@ -236,6 +247,19 @@ function table_assign_props(target, source, props)
 	return target
 end
 
+-- Assign props from `source` to `target` that are not in `props` set.
+---@generic T: table<any, any>
+---@param target T
+---@param source T
+---@param props table<string, boolean>
+---@return T
+function table_assign_exclude(target, source, props)
+	for key, value in pairs(source) do
+		if not props[key] then target[key] = value end
+	end
+	return target
+end
+
 -- `table_assign({}, input)` without loosing types :(
 ---@generic T: table<any, any>
 ---@param input T
@@ -261,6 +285,26 @@ function serialize_key_value_list(input, value_sanitizer)
 		if key and value then result[key] = sanitize(value, key) end
 	end
 	return result
+end
+
+---@param key string
+---@param modifiers? string
+---@return Shortcut
+function create_shortcut(key, modifiers)
+	key = key:lower()
+
+	local id_parts, modifiers_set
+	if modifiers then
+		id_parts = split(modifiers:lower(), '+')
+		table.sort(id_parts, function(a, b) return a < b end)
+		modifiers_set = create_set(id_parts)
+		modifiers = table.concat(id_parts, '+')
+	else
+		id_parts, modifiers, modifiers_set = {}, nil, {}
+	end
+	id_parts[#id_parts + 1] = key
+
+	return table_assign({id = table.concat(id_parts, '+'), key = key, modifiers = modifiers}, modifiers_set)
 end
 
 --[[ EASING FUNCTIONS ]]

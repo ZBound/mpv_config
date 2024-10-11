@@ -1,6 +1,7 @@
 local Element = require('elements/Element')
 local Button = require('elements/Button')
 local CycleButton = require('elements/CycleButton')
+local ManagedButton = require('elements/ManagedButton')
 local Speed = require('elements/Speed')
 
 -- sizing:
@@ -36,13 +37,13 @@ function Controls:init_options()
 	-- Serialize control elements
 	local shorthands = {
 		['play-pause'] = 'cycle:pause:pause:no/yes=play_arrow?' .. t('Play/Pause'),
-		menu = 'command:menu:script-binding uosc/menu-blurred?' .. t('Menu'),
+		menu = 'command:menu_book:script-binding uosc/menu-blurred?' .. t('Menu'),
 		subtitles = 'command:closed_caption:script-binding uosc/subtitles#sub>1?' .. t('Subtitles'),
 		audio = 'command:graphic_eq:script-binding uosc/audio#audio>1?' .. t('Audio'),
 		['audio-device'] = 'command:speaker:script-binding uosc/audio-device?' .. t('Audio device'),
 		video = 'command:smart_display:script-binding uosc/video#video>1?' .. t('Video'),
 		playlist = 'command:list_alt:script-binding uosc/playlist#playlist>1?' .. t('Playlist'),
-		chapters = 'command:track_changes:script-binding uosc/chapters#chapters>1?' .. t('Chapters'),
+		chapters = 'command:library_books:script-binding uosc/chapters#chapters>1?' .. t('Chapters'),
 		['editions'] = 'command:movie_filter:script-binding uosc/editions#editions>1?' .. t('Editions'),
 		['stream-quality'] = 'command:high_quality:script-binding uosc/stream-quality?' .. t('Stream quality'),
 		['open-file'] = 'command:folder:script-binding uosc/open-file?' .. t('Open file'),
@@ -162,6 +163,19 @@ function Controls:init_options()
 				})
 				table_assign(control, {element = element, sizing = 'static', scale = 1, ratio = 1})
 				if badge then self:register_badge_updater(badge, element) end
+			end
+		elseif kind == 'button' then
+			if #params ~= 1 then
+				mp.error(string.format(
+					'managed button needs 1 parameter, %d received: %s', #params, table.concat(params, '/')
+				))
+			else
+				local element = ManagedButton:new('control_' .. i, {
+					name = params[1],
+					render_order = self.render_order,
+					anchor_id = 'controls',
+				})
+				table_assign(control, {element = element, sizing = 'static', scale = 1, ratio = 1})
 			end
 		elseif kind == 'speed' then
 			if not Elements.speed then
